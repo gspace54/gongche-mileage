@@ -655,6 +655,17 @@
     <div class="card">
       <div class="card-title"><span class="dot"></span>新建行程</div>
 
+      <!-- Vehicle Selector -->
+      <div class="form-group">
+        <label class="form-label">🚘 选择车辆</label>
+        <select id="vehicleSelect" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:#fafafa;outline:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 12 12%22><path fill=%22%23999%22 d=%22M6 8L1 3h10z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;">
+          <option value="">请选择车辆</option>
+          <option value="沪A90E75">沪A90E75</option>
+          <option value="沪BNB862">沪BNB862</option>
+          <option value="沪DGF011">沪DGF011</option>
+        </select>
+      </div>
+
       <!-- Start Point -->
       <div class="form-group">
         <label class="form-label"><span class="num start">起</span>出发地</label>
@@ -694,6 +705,7 @@
         <span class="text-sm text-secondary">今日累计里程：<strong id="todayTotalKm" style="color:var(--primary)">0</strong> 公里</span>
         <button class="btn btn-outline btn-sm" id="clearTodayBtn">清空今日</button>
       </div>
+      <div id="vehicleBreakdown" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;"></div>
       <div id="todaySavedList"></div>
     </div>
   </div>
@@ -884,8 +896,9 @@ function saveData(data) {
 // ==================== APP STATE ====================
 let appData = loadData();
 let currentTrip = {
-  startIndex: -1,      // index in appData.locations
-  destIndices: [],     // array of indices in appData.locations
+  vehicle: '',           // license plate
+  startIndex: -1,        // index in appData.locations
+  destIndices: [],       // array of indices in appData.locations
 };
 let editingLocationIndex = -1;
 let activePickerTarget = null; // 'start' | 'dest_N'
@@ -1285,6 +1298,14 @@ function updateDestsVisual() {
 
 // ==================== SAVE TRIP ====================
 function saveCurrentTrip() {
+  // Read vehicle from dropdown
+  currentTrip.vehicle = document.getElementById('vehicleSelect').value;
+
+  if (!currentTrip.vehicle) {
+    showToast('请先选择车辆', 'error');
+    return;
+  }
+
   const fullRoute = [currentTrip.startIndex, ...currentTrip.destIndices].filter(i => i >= 0);
   if (fullRoute.length < 2) {
     showToast('请至少选择出发地和一个目的地', 'error');
@@ -1306,6 +1327,7 @@ function saveCurrentTrip() {
 
   const trip = {
     id: generateId(),
+    vehicle: currentTrip.vehicle,
     start: appData.locations[currentTrip.startIndex].name,
     destinations: currentTrip.destIndices.filter(i => i >= 0).map(i => appData.locations[i].name),
     segments: segments,
@@ -1321,7 +1343,8 @@ function saveCurrentTrip() {
   saveData(appData);
 
   // Reset builder
-  currentTrip = { startIndex: -1, destIndices: [-1] };
+  currentTrip = { vehicle: '', startIndex: -1, destIndices: [-1] };
+  document.getElementById('vehicleSelect').value = '';
   document.getElementById('startInput').value = '';
   document.getElementById('startAddress').textContent = '';
   document.getElementById('startWrapper').classList.remove('has-value');
@@ -1354,10 +1377,24 @@ function renderTodaySaved() {
   const totalKm = trips.reduce((sum, t) => sum + t.totalKm, 0);
   totalEl.textContent = Math.round(totalKm * 10) / 10;
 
+  // Per-vehicle breakdown
+  const vehicleTotals = {};
+  trips.forEach(t => {
+    const v = t.vehicle || '未知车辆';
+    vehicleTotals[v] = (vehicleTotals[v] || 0) + t.totalKm;
+  });
+  const breakdownEl = document.getElementById('vehicleBreakdown');
+  if (breakdownEl) {
+    breakdownEl.innerHTML = Object.entries(vehicleTotals).map(([v, km]) =>
+      `<span style="background:#e6f4ff;color:#1677ff;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500;">🚘 ${v}: ${Math.round(km*10)/10}km</span>`
+    ).join('');
+  }
+
   list.innerHTML = trips.map((trip, i) => `
     <div class="saved-trip">
       <div class="saved-trip-header">
         <span style="font-weight:500;">行程 ${i + 1}</span>
+        <span style="background:#e6f4ff;color:#1677ff;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:500;">🚘 ${trip.vehicle || '未知'}</span>
         <span style="font-size:12px;color:var(--text-secondary);">${trip.savedAt}</span>
         <button class="btn-danger-sm" data-delete-trip="${trip.id}">删除</button>
       </div>
@@ -1429,6 +1466,7 @@ function renderHistory() {
             <div class="history-trip">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <span style="font-weight:500;">行程 ${i + 1}</span>
+                <span style="background:#e6f4ff;color:#1677ff;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:500;">🚘 ${trip.vehicle || '未知'}</span>
                 <span style="font-size:11px;color:#999;">${trip.savedAt}</span>
                 <button class="btn-danger-sm" data-delete-history="${dateStr}" data-trip-id="${trip.id}">删除</button>
               </div>
