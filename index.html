@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>公务用车里程统计</title>
+<style>
+  :root {
+    --primary: #1677ff;
+    --primary-light: #e6f4ff;
+    --success: #52c41a;
+    --success-light: #f6ffed;
+    --warning: #faad14;
+    --danger: #ff4d4f;
+    --bg: #f5f5f5;
+    --card: #fff;
+    --text: #333;
+    --text-secondary: #999;
+    --text-light: #bbb;
+    --border: #eee;
+    --radius: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    --safe-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding-bottom: calc(80px + var(--safe-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: linear-gradient(135deg, #1677ff, #4096ff);
+    color: #fff;
+    padding: 20px 16px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(22,119,255,0.3);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header h1 .icon { font-size: 22px; }
+  .header-date {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 4px;
+  }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 80px;
+    z-index: 99;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border: none;
+    background: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .tab.active {
+    color: var(--primary);
+  }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+  }
+  .tab .badge {
+    display: inline-block;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: top;
+  }
+
+  /* ===== CONTENT ===== */
+  .content { padding: 12px 16px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title .dot {
+    width: 6px; height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ===== FORM ELEMENTS ===== */
+  .form-group {
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .form-label .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .form-label .num.start { background: #faad14; }
+
+  .input-wrapper {
+    position: relative;
+  }
+  .input-wrapper input {
+    width: 100%;
+    padding: 11px 36px 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    background: #fafafa;
+    transition: all 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .input-wrapper input:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(22,119,255,0.1);
+  }
+  .input-wrapper input::placeholder { color: #ccc; }
+  .input-wrapper .dropdown-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bbb;
+    pointer-events: none;
+    font-size: 12px;
+  }
+  .input-wrapper .clear-btn {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ccc;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    display: none;
+    line-height: 1;
+  }
+  .input-wrapper.has-value .clear-btn { display: block; }
+  .input-wrapper.has-value .dropdown-arrow { display: none; }
+
+  .address-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    padding-left: 4px;
+    min-height: 18px;
+  }
+  .address-hint.loading { color: var(--primary); }
+
+  .distance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary);
+    margin-top: 4px;
+    padding: 4px 10px;
+    background: var(--primary-light);
+    border-radius: 6px;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(22,119,255,0.3);
+  }
+  .btn-primary:active { background: #0958d9; }
+  .btn-outline {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .btn-danger {
+    background: #fff;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .btn-danger-sm {
+    background: none;
+    color: var(--danger);
+    padding: 4px 8px;
+    font-size: 12px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-text {
+    background: none;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ===== DESTINATION LIST ===== */
+  .dest-item {
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    position: relative;
+    transition: all 0.2s;
+  }
+  .dest-item.current { border-color: var(--primary); background: #fafbff; }
+  .dest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .dest-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .dest-remove {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: #fff;
+    color: var(--danger);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  /* ===== TOTAL CARD ===== */
+  .total-card {
+    background: linear-gradient(135deg, #e6f4ff, #f0f5ff);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    border: 2px dashed #b3d8ff;
+  }
+  .total-label { font-size: 13px; color: var(--text-secondary); }
+  .total-value {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+  .total-value .unit {
+    font-size: 16px;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .total-segments {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ===== SAVED TRIPS ===== */
+  .saved-trip {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--success);
+  }
+  .saved-trip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .saved-trip-route {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .saved-trip-distance {
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  /* ===== HISTORY ===== */
+  .history-date-group {
+    margin-bottom: 16px;
+  }
+  .history-date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .history-date {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .history-date-total {
+    font-size: 14px;
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .history-trips { padding-left: 8px; }
+  .history-trip {
+    padding: 10px;
+    background: #fafafa;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .history-trip-route {
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .history-trip-distance {
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* ===== SETTINGS ===== */
+  .settings-section {
+    margin-bottom: 20px;
+  }
+  .settings-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .location-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .location-list-item .name { font-weight: 500; }
+  .location-list-item .coords {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .location-list-item .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 { font-size: 16px; }
+  .modal-close {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #f5f5f5;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-search {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-search input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f5f5f5;
+    outline: none;
+  }
+  .modal-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-list-item {
+    padding: 14px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    font-size: 14px;
+    transition: background 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-list-item:active { background: var(--primary-light); }
+  .modal-list-item.selected { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+  .modal-list-item .item-address {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .modal-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-light);
+  }
+
+  /* ===== BOTTOM BAR ===== */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 12px 16px calc(12px + var(--safe-bottom));
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+  }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 300;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* ===== MISC ===== */
+  .text-sm { font-size: 12px; }
+  .text-secondary { color: var(--text-secondary); }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mb-8 { margin-bottom: 8px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .flex-gap-8 { display: flex; gap: 8px; align-items: center; }
+
+  .add-dest-btn {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed #d9d9d9;
+    border-radius: 10px;
+    background: #fafafa;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .add-dest-btn:active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+  /* Responsive */
+  @media (min-width: 600px) {
+    .content { max-width: 600px; margin: 0 auto; }
+    .header { padding: 24px; }
+    .header h1 { font-size: 20px; }
+    .modal {
+      border-radius: 16px;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 500px;
+      max-height: 70vh;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+    .modal-overlay { align-items: center; }
+  }
+
+  @media print {
+    .header, .tabs, .bottom-bar, .btn, .add-dest-btn, .dest-remove, .clear-btn { display: none !important; }
+    body { background: #fff; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <h1><span class="icon">🚗</span>公务用车里程统计</h1>
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="trip">📋 今日行程</button>
+  <button class="tab" data-tab="history">📊 历史记录<span class="badge hidden" id="historyBadge">0</span></button>
+  <button class="tab" data-tab="settings">⚙️ 设置</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- TAB: TODAY'S TRIP -->
+  <div class="tab-content active" id="tab-trip">
+    <!-- Trip Builder Card -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>新建行程</div>
+
+      <!-- Start Point -->
+      <div class="form-group">
+        <label class="form-label"><span class="num start">起</span>出发地</label>
+        <div class="input-wrapper" id="startWrapper">
+          <input type="text" id="startInput" placeholder="🔍 搜索或选择出发地..." autocomplete="off" readonly>
+          <button class="clear-btn" id="startClear">×</button>
+          <span class="dropdown-arrow">▼</span>
+        </div>
+        <div class="address-hint" id="startAddress"></div>
+      </div>
+
+      <!-- Destinations Container -->
+      <div id="destinationsContainer"></div>
+
+      <!-- Add Destination -->
+      <button class="add-dest-btn" id="addDestBtn">
+        <span>＋</span> 添加目的地
+      </button>
+
+      <!-- Distance Summary -->
+      <div class="total-card mt-12" id="totalCard" style="display:none">
+        <div class="total-label">📏 预估总里程</div>
+        <div class="total-value" id="totalDistance">0<span class="unit">公里</span></div>
+        <div class="total-segments" id="totalSegments"></div>
+      </div>
+
+      <!-- Save Button -->
+      <button class="btn btn-primary mt-12" id="saveBtn" disabled>
+        💾 保存今日行程
+      </button>
+    </div>
+
+    <!-- Today's Saved Trips -->
+    <div class="card" id="todaySavedCard" style="display:none">
+      <div class="card-title"><span class="dot"></span>今日已保存 (<span id="todayCount">0</span>条)</div>
+      <div class="flex-between mb-8">
+        <span class="text-sm text-secondary">今日累计里程：<strong id="todayTotalKm" style="color:var(--primary)">0</strong> 公里</span>
+        <button class="btn btn-outline btn-sm" id="clearTodayBtn">清空今日</button>
+      </div>
+      <div id="todaySavedList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORY -->
+  <div class="tab-content" id="tab-history">
+    <div class="flex-between mb-8">
+      <span class="text-sm text-secondary">共 <strong id="historyTotalDays">0</strong> 天记录</span>
+      <button class="btn btn-danger btn-sm" id="clearHistoryBtn">清空全部历史</button>
+    </div>
+    <div id="historyList">
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>暂无历史记录</p>
+        <p class="text-sm text-secondary mt-8">保存行程后，历史记录会显示在这里</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: SETTINGS -->
+  <div class="tab-content" id="tab-settings">
+    <!-- Amap API Key -->
+    <div class="card settings-section">
+      <div class="card-title">🗺️ 高德地图设置</div>
+      <p class="text-sm text-secondary mb-8">配置高德地图 API Key 后，可使用驾车导航距离（更准确）。<br>免费申请：<a href="https://lbs.amap.com/" target="_blank">https://lbs.amap.com/</a></p>
+      <div class="form-group">
+        <label class="form-label">API Key (Web服务)</label>
+        <input type="text" id="amapKeyInput" placeholder="输入高德地图 Web服务 API Key" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fafafa;outline:none;">
+      </div>
+      <div class="flex-gap-8">
+        <button class="btn btn-primary btn-sm" id="saveAmapKeyBtn">保存 Key</button>
+        <button class="btn btn-outline btn-sm" id="testAmapKeyBtn">测试连接</button>
+      </div>
+      <p class="text-sm text-secondary mt-8" id="amapStatus">未配置 Key，使用直线距离估算（×1.4道路系数）</p>
+    </div>
+
+    <!-- Location Management -->
+    <div class="card settings-section">
+      <div class="card-title">📍 地点管理</div>
+      <p class="text-sm text-secondary mb-8">管理可选的地点列表。支持手动输入坐标或通过高德API自动获取。</p>
+      <div class="flex-between mb-8">
+        <span class="text-sm">共 <strong id="locationCount">0</strong> 个地点</span>
+        <div class="flex-gap-8">
+          <button class="btn btn-outline btn-sm" id="addLocationBtn">＋ 添加地点</button>
+          <button class="btn btn-outline btn-sm" id="resetLocationsBtn">恢复默认</button>
+        </div>
+      </div>
+      <div id="locationList" style="max-height:400px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="card settings-section">
+      <div class="card-title">💾 数据管理</div>
+      <div class="flex-gap-8" style="flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" id="exportDataBtn">📤 导出数据</button>
+        <button class="btn btn-outline btn-sm" id="importDataBtn">📥 导入数据</button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION PICKER MODAL -->
+<div class="modal-overlay hidden" id="locationModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">选择地点</h2>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" id="modalSearch" placeholder="🔍 搜索地点名称或地址...">
+    </div>
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT LOCATION MODAL -->
+<div class="modal-overlay hidden" id="locationEditModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="locEditTitle">添加地点</h2>
+      <button class="modal-close" id="locEditClose">✕</button>
+    </div>
+    <div style="padding:16px;overflow-y:auto;max-height:60vh;">
+      <div class="form-group">
+        <label class="form-label">地点名称 *</label>
+        <input type="text" id="locEditName" placeholder="如：市政府、交通局..." style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">地址</label>
+        <input type="text" id="locEditAddress" placeholder="详细地址（可选）" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">纬度 (Latitude)</label>
+        <input type="number" id="locEditLat" placeholder="如：30.5728" step="0.0001" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">经度 (Longitude)</label>
+        <input type="number" id="locEditLng" placeholder="如：104.0668" step="0.0001" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+      </div>
+      <button class="btn btn-primary btn-sm" id="locEditSave" style="width:100%;">保存地点</button>
+      <input type="hidden" id="locEditIndex" value="-1">
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DEFAULT LOCATIONS ====================
+const DEFAULT_LOCATIONS = [
+  // 政府机关
+  { name: "市人民政府", address: "市政府办公大楼", lat: 30.5728, lng: 104.0668 },
+  { name: "省人民政府", address: "省政府办公大楼", lat: 30.5800, lng: 104.0550 },
+  { name: "区委区政府", address: "区人民政府", lat: 30.5900, lng: 104.0700 },
+  { name: "市委党校", address: "市委党校", lat: 30.5600, lng: 104.0800 },
+  // 部门机关
+  { name: "市交通局", address: "交通运输局", lat: 30.5750, lng: 104.0620 },
+  { name: "市公安局", address: "公安局", lat: 30.5700, lng: 104.0720 },
+  { name: "市财政局", address: "财政局", lat: 30.5680, lng: 104.0580 },
+  { name: "市人社局", address: "人力资源和社会保障局", lat: 30.5780, lng: 104.0680 },
+  { name: "市住建局", address: "住房和城乡建设局", lat: 30.5650, lng: 104.0750 },
+  { name: "市发改委", address: "发展和改革委员会", lat: 30.5730, lng: 104.0600 },
+  { name: "市卫健委", address: "卫生健康委员会", lat: 30.5820, lng: 104.0650 },
+  { name: "市审计局", address: "审计局", lat: 30.5690, lng: 104.0560 },
+  { name: "市司法局", address: "司法局", lat: 30.5670, lng: 104.0730 },
+  { name: "市城管局", address: "城市管理局", lat: 30.5710, lng: 104.0780 },
+  { name: "市信访局", address: "信访局", lat: 30.5740, lng: 104.0530 },
+  { name: "市统计局", address: "统计局", lat: 30.5660, lng: 104.0690 },
+  { name: "市自然资源局", address: "自然资源和规划局", lat: 30.5770, lng: 104.0590 },
+  { name: "市生态环境局", address: "生态环境局", lat: 30.5630, lng: 104.0770 },
+  { name: "市税务局", address: "税务局", lat: 30.5720, lng: 104.0630 },
+  { name: "市市场监管局", address: "市场监督管理局", lat: 30.5700, lng: 104.0710 },
+  // 交通枢纽
+  { name: "机场T1航站楼", address: "国际机场T1", lat: 30.5800, lng: 103.9500 },
+  { name: "机场T2航站楼", address: "国际机场T2", lat: 30.5780, lng: 103.9580 },
+  { name: "火车站", address: "火车站", lat: 30.6000, lng: 104.0800 },
+  { name: "高铁站（东站）", address: "高铁东站", lat: 30.6300, lng: 104.1400 },
+  { name: "高铁站（南站）", address: "高铁南站", lat: 30.5200, lng: 104.0600 },
+  { name: "客运中心", address: "长途客运中心", lat: 30.5900, lng: 104.0750 },
+  // 公共设施
+  { name: "政务服务中心", address: "政务服务中心大厅", lat: 30.5750, lng: 104.0650 },
+  { name: "会展中心", address: "国际会展中心", lat: 30.5850, lng: 104.0850 },
+  { name: "体育中心", address: "体育中心", lat: 30.5950, lng: 104.0700 },
+  { name: "会议中心", address: "会议中心", lat: 30.5720, lng: 104.0670 },
+  // 酒店/招待所
+  { name: "市迎宾馆", address: "迎宾馆", lat: 30.5680, lng: 104.0640 },
+  { name: "市委招待所", address: "市委招待所", lat: 30.5730, lng: 104.0570 },
+];
+
+// ==================== STORAGE ====================
+const STORAGE_KEY = 'chauffeur_mileage_v2';
+
+function getDefaultData() {
+  return {
+    locations: JSON.parse(JSON.stringify(DEFAULT_LOCATIONS)),
+    history: {},       // { '2026-06-12': [{ id, start, destinations, segments, totalKm, savedAt }] }
+    settings: {
+      amapKey: '',
+    },
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return getDefaultData();
+    const data = JSON.parse(raw);
+    // Merge with defaults to handle schema updates
+    const defaults = getDefaultData();
+    if (!data.locations || !Array.isArray(data.locations)) data.locations = defaults.locations;
+    if (!data.history || typeof data.history !== 'object') data.history = {};
+    if (!data.settings) data.settings = defaults.settings;
+    if (!data.settings.amapKey) data.settings.amapKey = '';
+    return data;
+  } catch (e) {
+    return getDefaultData();
+  }
+}
+
+function saveData(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    showToast('存储空间不足，请清理历史数据', 'error');
+  }
+}
+
+// ==================== APP STATE ====================
+let appData = loadData();
+let currentTrip = {
+  startIndex: -1,      // index in appData.locations
+  destIndices: [],     // array of indices in appData.locations
+};
+let editingLocationIndex = -1;
+let activePickerTarget = null; // 'start' | 'dest_N'
+
+// ==================== UTILS ====================
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(dateStr) {
+  const parts = dateStr.split('-');
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  const weekdays = ['日','一','二','三','四','五','六'];
+  return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日 星期${weekdays[d.getDay()]}`;
+}
+
+function formatDateShort(dateStr) {
+  const parts = dateStr.split('-');
+  return `${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+}
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function getEstimatedDistance(loc1, loc2) {
+  // Use Haversine with road factor 1.4
+  if (!loc1 || !loc2) return 0;
+  if (loc1.lat == null || loc1.lng == null || loc2.lat == null || loc2.lng == null) return 0;
+  const straight = haversineDistance(loc1.lat, loc1.lng, loc2.lat, loc2.lng);
+  return Math.round(straight * 1.4 * 10) / 10; // road factor
+}
+
+async function getAmapDistance(loc1, loc2) {
+  const key = appData.settings.amapKey;
+  if (!key) return null;
+  try {
+    const origin = `${loc1.lng},${loc1.lat}`;
+    const destination = `${loc2.lng},${loc2.lat}`;
+    const url = `https://restapi.amap.com/v3/direction/driving?origin=${origin}&destination=${destination}&key=${key}&strategy=0`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.status === '1' && json.route && json.route.paths && json.route.paths.length > 0) {
+      const meters = parseInt(json.route.paths[0].distance);
+      return Math.round(meters / 100) / 10; // convert to km with 1 decimal
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function getAmapGeocode(address, city) {
+  const key = appData.settings.amapKey;
+  if (!key) return null;
+  try {
+    const params = new URLSearchParams({ key, address });
+    if (city) params.append('city', city);
+    const url = `https://restapi.amap.com/v3/geocode/geo?${params.toString()}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.status === '1' && json.geocodes && json.geocodes.length > 0) {
+      const geo = json.geocodes[0];
+      const [lng, lat] = geo.location.split(',').map(Number);
+      return { lat, lng, address: geo.formatted_address || address };
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast ' + (type || '');
+  // Force reflow
+  toast.offsetHeight;
+  toast.classList.add('show');
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ==================== MODAL ====================
+function openLocationPicker(target) {
+  activePickerTarget = target;
+  const input = target === 'start' ? document.getElementById('startInput') : document.getElementById(`destInput_${target.split('_')[1]}`);
+  const currentVal = input ? input.value : '';
+
+  document.getElementById('modalTitle').textContent = target === 'start' ? '选择出发地' : '选择目的地';
+  document.getElementById('modalSearch').value = '';
+  document.getElementById('locationModal').classList.remove('hidden');
+  renderModalList('');
+}
+
+function closeLocationPicker() {
+  document.getElementById('locationModal').classList.add('hidden');
+  activePickerTarget = null;
+}
+
+function renderModalList(filter) {
+  const list = document.getElementById('modalList');
+  const keyword = (filter || '').toLowerCase().trim();
+  let locations = appData.locations;
+
+  if (keyword) {
+    locations = locations.filter(l =>
+      l.name.toLowerCase().includes(keyword) ||
+      (l.address && l.address.toLowerCase().includes(keyword))
+    );
+  }
+
+  // Determine currently selected index for this target
+  let selectedIndex = -1;
+  if (activePickerTarget === 'start') {
+    selectedIndex = currentTrip.startIndex;
+  } else if (activePickerTarget && activePickerTarget.startsWith('dest_')) {
+    const idx = parseInt(activePickerTarget.split('_')[1]);
+    selectedIndex = currentTrip.destIndices[idx] ?? -1;
+  }
+
+  if (locations.length === 0) {
+    list.innerHTML = '<div class="modal-empty">没有匹配的地点<br><span style="font-size:12px;color:#ccc;">请在"设置"中添加地点</span></div>';
+    return;
+  }
+
+  list.innerHTML = locations.map((loc, i) => {
+    const origIndex = appData.locations.indexOf(loc);
+    const isSelected = origIndex === selectedIndex;
+    return `
+      <div class="modal-list-item${isSelected ? ' selected' : ''}" data-index="${origIndex}" data-name="${loc.name}">
+        <div>
+          <div>${loc.name}</div>
+          <div class="item-address">${loc.address || '未设置地址'} ${loc.lat != null ? '· ' + loc.lat.toFixed(4) + ',' + loc.lng.toFixed(4) : ''}</div>
+        </div>
+        ${isSelected ? '<span>✓</span>' : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Click handlers
+  list.querySelectorAll('.modal-list-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const index = parseInt(item.dataset.index);
+      selectLocation(activePickerTarget, index);
+      closeLocationPicker();
+    });
+  });
+}
+
+function selectLocation(target, index) {
+  const loc = appData.locations[index];
+  if (!loc) return;
+
+  if (target === 'start') {
+    currentTrip.startIndex = index;
+    document.getElementById('startInput').value = loc.name;
+    document.getElementById('startWrapper').classList.add('has-value');
+    document.getElementById('startAddress').textContent = loc.address || '';
+  } else if (target && target.startsWith('dest_')) {
+    const idx = parseInt(target.split('_')[1]);
+    if (idx >= 0 && idx < currentTrip.destIndices.length) {
+      currentTrip.destIndices[idx] = index;
+      const input = document.getElementById(`destInput_${idx}`);
+      if (input) input.value = loc.name;
+      const addrEl = document.getElementById(`destAddress_${idx}`);
+      if (addrEl) addrEl.textContent = loc.address || '';
+    }
+  }
+  updateDistances();
+  renderTripBuilder();
+}
+
+// ==================== DISTANCE CALCULATION ====================
+async function updateDistances() {
+  const totalCard = document.getElementById('totalCard');
+  const totalDistanceEl = document.getElementById('totalDistance');
+  const totalSegmentsEl = document.getElementById('totalSegments');
+  const saveBtn = document.getElementById('saveBtn');
+
+  const hasStart = currentTrip.startIndex >= 0;
+  const hasDest = currentTrip.destIndices.length > 0 && currentTrip.destIndices.some(i => i >= 0);
+  const canCalculate = hasStart && hasDest;
+
+  if (!canCalculate) {
+    totalCard.style.display = 'none';
+    saveBtn.disabled = true;
+    return;
+  }
+
+  // Build the full route: start -> dest[0] -> dest[1] -> ...
+  const fullRoute = [currentTrip.startIndex, ...currentTrip.destIndices].filter(i => i >= 0);
+  let totalKm = 0;
+  const segments = [];
+
+  for (let i = 0; i < fullRoute.length - 1; i++) {
+    const fromLoc = appData.locations[fullRoute[i]];
+    const toLoc = appData.locations[fullRoute[i+1]];
+    if (fromLoc && toLoc && fromLoc.lat != null && toLoc.lat != null) {
+      const dist = getEstimatedDistance(fromLoc, toLoc);
+      totalKm += dist;
+      segments.push({ from: fromLoc.name, to: toLoc.name, km: dist });
+    }
+  }
+
+  totalCard.style.display = 'block';
+  totalDistanceEl.innerHTML = totalKm.toFixed(1) + '<span class="unit">公里</span>';
+  totalSegmentsEl.textContent = segments.map(s => `${s.from} → ${s.to}: ${s.km}km`).join(' | ');
+
+  // Update per-destination distance badges
+  for (let i = 0; i < currentTrip.destIndices.length; i++) {
+    const badgeEl = document.getElementById(`destDistance_${i}`);
+    if (!badgeEl) continue;
+    const prevIdx = i === 0 ? currentTrip.startIndex : currentTrip.destIndices[i-1];
+    const currIdx = currentTrip.destIndices[i];
+    if (prevIdx >= 0 && currIdx >= 0) {
+      const prevLoc = appData.locations[prevIdx];
+      const currLoc = appData.locations[currIdx];
+      if (prevLoc && currLoc && prevLoc.lat != null && currLoc.lat != null) {
+        const dist = getEstimatedDistance(prevLoc, currLoc);
+        badgeEl.innerHTML = `↔ ${dist} 公里`;
+        badgeEl.style.display = 'inline-flex';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    } else {
+      badgeEl.style.display = 'none';
+    }
+  }
+
+  saveBtn.disabled = totalKm <= 0;
+
+  // Try Amap for more accurate distances
+  if (appData.settings.amapKey) {
+    updateDistancesWithAmap(fullRoute);
+  }
+}
+
+async function updateDistancesWithAmap(fullRoute) {
+  let totalKm = 0;
+  let updated = false;
+
+  for (let i = 0; i < fullRoute.length - 1; i++) {
+    const fromLoc = appData.locations[fullRoute[i]];
+    const toLoc = appData.locations[fullRoute[i+1]];
+    if (fromLoc && toLoc && fromLoc.lat != null && toLoc.lat != null) {
+      const amapDist = await getAmapDistance(fromLoc, toLoc);
+      if (amapDist !== null) {
+        totalKm += amapDist;
+        updated = true;
+
+        // Update individual badge if applicable
+        if (i < currentTrip.destIndices.length) {
+          const badgeEl = document.getElementById(`destDistance_${i}`);
+          if (badgeEl) {
+            badgeEl.innerHTML = `↔ ${amapDist} 公里 <span style="font-size:10px;color:#52c41a;">(高德)</span>`;
+          }
+        }
+      } else {
+        totalKm += getEstimatedDistance(fromLoc, toLoc);
+      }
+    }
+  }
+
+  if (updated) {
+    document.getElementById('totalDistance').innerHTML = totalKm.toFixed(1) + '<span class="unit">公里</span> <span style="font-size:11px;color:#52c41a;">(高德地图)</span>';
+  }
+}
+
+// ==================== TRIP BUILDER ====================
+function renderTripBuilder() {
+  const container = document.getElementById('destinationsContainer');
+
+  const hasExisting = currentTrip.destIndices.length > 0;
+
+  // Ensure at least one destination row by default
+  if (!hasExisting) {
+    currentTrip.destIndices = [-1];
+  }
+
+  container.innerHTML = currentTrip.destIndices.map((destIdx, i) => {
+    const loc = destIdx >= 0 ? appData.locations[destIdx] : null;
+    const num = i + 1;
+    const showPrevDist = i > 0 || currentTrip.startIndex >= 0;
+    const prevName = i === 0 && currentTrip.startIndex >= 0
+      ? appData.locations[currentTrip.startIndex]?.name || '出发地'
+      : (i > 0 && currentTrip.destIndices[i-1] >= 0 ? appData.locations[currentTrip.destIndices[i-1]]?.name : null);
+
+    return `
+      <div class="dest-item" id="destItem_${i}">
+        <div class="dest-header">
+          <span class="dest-label"><span class="num">${num}</span> 目的地 ${num}</span>
+          <button class="dest-remove" data-dest="${i}" title="移除">✕</button>
+        </div>
+        <div class="form-group" style="margin-bottom:4px;">
+          <div class="input-wrapper" id="destWrapper_${i}">
+            <input type="text" id="destInput_${i}" placeholder="🔍 搜索或选择目的地..." value="${loc ? loc.name : ''}" autocomplete="off" readonly>
+            <button class="clear-btn" id="destClear_${i}">×</button>
+            <span class="dropdown-arrow">▼</span>
+          </div>
+          <div class="address-hint" id="destAddress_${i}">${loc ? (loc.address || '') : ''}</div>
+          <div class="distance-badge" id="destDistance_${i}" style="display:none;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Show/hide clear button for start
+  if (currentTrip.startIndex >= 0) {
+    document.getElementById('startWrapper').classList.add('has-value');
+  }
+
+  // Bind events
+  bindDestinationEvents();
+  updateDistances();
+
+  // Update the add destination button state
+  updateAddDestBtn();
+}
+
+function updateAddDestBtn() {
+  const btn = document.getElementById('addDestBtn');
+  if (currentTrip.destIndices.length >= 10) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'flex';
+  }
+}
+
+function bindDestinationEvents() {
+  for (let i = 0; i < currentTrip.destIndices.length; i++) {
+    const input = document.getElementById(`destInput_${i}`);
+    const clearBtn = document.getElementById(`destClear_${i}`);
+    const removeBtn = document.querySelector(`[data-dest="${i}"]`);
+
+    if (input) {
+      input.addEventListener('click', () => openLocationPicker(`dest_${i}`));
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentTrip.destIndices[i] = -1;
+        input.value = '';
+        document.getElementById(`destAddress_${i}`).textContent = '';
+        document.getElementById(`destWrapper_${i}`).classList.remove('has-value');
+        updateDistances();
+        updateDestsVisual();
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        currentTrip.destIndices.splice(i, 1);
+        if (currentTrip.destIndices.length === 0) {
+          currentTrip.destIndices = [-1];
+        }
+        renderTripBuilder();
+      });
+    }
+
+    // Update wrapper class
+    if (currentTrip.destIndices[i] >= 0) {
+      document.getElementById(`destWrapper_${i}`)?.classList.add('has-value');
+    }
+  }
+}
+
+function updateDestsVisual() {
+  for (let i = 0; i < currentTrip.destIndices.length; i++) {
+    const wrapper = document.getElementById(`destWrapper_${i}`);
+    if (wrapper) {
+      if (currentTrip.destIndices[i] >= 0) {
+        wrapper.classList.add('has-value');
+      } else {
+        wrapper.classList.remove('has-value');
+      }
+    }
+  }
+}
+
+// ==================== SAVE TRIP ====================
+function saveCurrentTrip() {
+  const fullRoute = [currentTrip.startIndex, ...currentTrip.destIndices].filter(i => i >= 0);
+  if (fullRoute.length < 2) {
+    showToast('请至少选择出发地和一个目的地', 'error');
+    return;
+  }
+
+  // Build segments
+  const segments = [];
+  let totalKm = 0;
+  for (let i = 0; i < fullRoute.length - 1; i++) {
+    const fromLoc = appData.locations[fullRoute[i]];
+    const toLoc = appData.locations[fullRoute[i+1]];
+    if (fromLoc && toLoc) {
+      const dist = getEstimatedDistance(fromLoc, toLoc);
+      segments.push({ from: fromLoc.name, to: toLoc.name, km: dist });
+      totalKm += dist;
+    }
+  }
+
+  const trip = {
+    id: generateId(),
+    start: appData.locations[currentTrip.startIndex].name,
+    destinations: currentTrip.destIndices.filter(i => i >= 0).map(i => appData.locations[i].name),
+    segments: segments,
+    totalKm: Math.round(totalKm * 10) / 10,
+    savedAt: nowTime(),
+  };
+
+  const dateKey = today();
+  if (!appData.history[dateKey]) {
+    appData.history[dateKey] = [];
+  }
+  appData.history[dateKey].push(trip);
+  saveData(appData);
+
+  // Reset builder
+  currentTrip = { startIndex: -1, destIndices: [-1] };
+  document.getElementById('startInput').value = '';
+  document.getElementById('startAddress').textContent = '';
+  document.getElementById('startWrapper').classList.remove('has-value');
+  document.getElementById('totalCard').style.display = 'none';
+  document.getElementById('saveBtn').disabled = true;
+
+  renderTripBuilder();
+  renderTodaySaved();
+  renderHistory();
+  showToast('行程已保存！', 'success');
+}
+
+// ==================== TODAY'S SAVED TRIPS ====================
+function renderTodaySaved() {
+  const dateKey = today();
+  const trips = appData.history[dateKey] || [];
+  const card = document.getElementById('todaySavedCard');
+  const list = document.getElementById('todaySavedList');
+  const countEl = document.getElementById('todayCount');
+  const totalEl = document.getElementById('todayTotalKm');
+
+  if (trips.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  countEl.textContent = trips.length;
+
+  const totalKm = trips.reduce((sum, t) => sum + t.totalKm, 0);
+  totalEl.textContent = Math.round(totalKm * 10) / 10;
+
+  list.innerHTML = trips.map((trip, i) => `
+    <div class="saved-trip">
+      <div class="saved-trip-header">
+        <span style="font-weight:500;">行程 ${i + 1}</span>
+        <span style="font-size:12px;color:var(--text-secondary);">${trip.savedAt}</span>
+        <button class="btn-danger-sm" data-delete-trip="${trip.id}">删除</button>
+      </div>
+      <div class="saved-trip-route">${trip.start} → ${trip.destinations.join(' → ')}</div>
+      <div class="saved-trip-distance">📏 ${trip.totalKm} 公里</div>
+      ${trip.segments ? trip.segments.map(s => `<div style="font-size:11px;color:#999;">  ${s.from} → ${s.to}: ${s.km}km</div>`).join('') : ''}
+    </div>
+  `).join('');
+
+  // Delete buttons
+  list.querySelectorAll('[data-delete-trip]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tripId = btn.dataset.deleteTrip;
+      appData.history[dateKey] = appData.history[dateKey].filter(t => t.id !== tripId);
+      if (appData.history[dateKey].length === 0) {
+        delete appData.history[dateKey];
+      }
+      saveData(appData);
+      renderTodaySaved();
+      renderHistory();
+      showToast('行程已删除');
+    });
+  });
+}
+
+// ==================== HISTORY ====================
+function renderHistory() {
+  const container = document.getElementById('historyList');
+  const totalDaysEl = document.getElementById('historyTotalDays');
+  const badge = document.getElementById('historyBadge');
+
+  const dates = Object.keys(appData.history).sort().reverse();
+  totalDaysEl.textContent = dates.length;
+
+  // Badge for history tab
+  const todayKey = today();
+  const hasToday = appData.history[todayKey] && appData.history[todayKey].length > 0;
+  if (hasToday) {
+    badge.textContent = appData.history[todayKey].length;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+
+  if (dates.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>暂无历史记录</p>
+        <p class="text-sm text-secondary mt-8">保存行程后，历史记录会显示在这里</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = dates.map(dateStr => {
+    const trips = appData.history[dateStr];
+    const dayTotal = trips.reduce((sum, t) => sum + t.totalKm, 0);
+    const isToday = dateStr === today();
+
+    return `
+      <div class="history-date-group">
+        <div class="history-date-header" data-toggle="${dateStr}">
+          <span class="history-date">${isToday ? '📌 今天' : ''} ${formatDateShort(dateStr)}</span>
+          <span class="history-date-total">📏 ${Math.round(dayTotal * 10) / 10} 公里 · ${trips.length}条</span>
+        </div>
+        <div class="history-trips" id="historyTrips_${dateStr}">
+          ${trips.map((trip, i) => `
+            <div class="history-trip">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:500;">行程 ${i + 1}</span>
+                <span style="font-size:11px;color:#999;">${trip.savedAt}</span>
+                <button class="btn-danger-sm" data-delete-history="${dateStr}" data-trip-id="${trip.id}">删除</button>
+              </div>
+              <div class="history-trip-route">${trip.start} → ${trip.destinations.join(' → ')}</div>
+              <div class="history-trip-distance">📏 ${trip.totalKm} 公里</div>
+              ${trip.segments ? trip.segments.map(s => `<div style="font-size:11px;color:#999;">  ${s.from} → ${s.to}: ${s.km}km</div>`).join('') : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Toggle details
+  container.querySelectorAll('[data-toggle]').forEach(header => {
+    header.addEventListener('click', () => {
+      const dateStr = header.dataset.toggle;
+      const tripsDiv = document.getElementById(`historyTrips_${dateStr}`);
+      if (tripsDiv) {
+        tripsDiv.style.display = tripsDiv.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+  });
+
+  // Delete buttons
+  container.querySelectorAll('[data-delete-history]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dateStr = btn.dataset.deleteHistory;
+      const tripId = btn.dataset.tripId;
+      appData.history[dateStr] = appData.history[dateStr].filter(t => t.id !== tripId);
+      if (appData.history[dateStr].length === 0) {
+        delete appData.history[dateStr];
+      }
+      saveData(appData);
+      renderHistory();
+      renderTodaySaved();
+      showToast('行程已删除');
+    });
+  });
+}
+
+// ==================== SETTINGS ====================
+function renderSettings() {
+  // Amap key
+  document.getElementById('amapKeyInput').value = appData.settings.amapKey || '';
+  updateAmapStatus();
+
+  // Location list
+  renderLocationList();
+}
+
+function updateAmapStatus() {
+  const el = document.getElementById('amapStatus');
+  if (appData.settings.amapKey) {
+    el.innerHTML = '✅ Key 已配置，将使用高德驾车导航距离';
+    el.style.color = '#52c41a';
+  } else {
+    el.innerHTML = '⚠️ 未配置 Key，使用直线距离估算（×1.4道路系数）。<br>免费获取 Key：<a href="https://lbs.amap.com/" target="_blank">https://lbs.amap.com/</a>（Web服务API）';
+    el.style.color = '#999';
+  }
+}
+
+function renderLocationList() {
+  const container = document.getElementById('locationList');
+  document.getElementById('locationCount').textContent = appData.locations.length;
+
+  container.innerHTML = appData.locations.map((loc, i) => `
+    <div class="location-list-item">
+      <div>
+        <div class="name">${loc.name}</div>
+        <div class="coords">${loc.address || '无地址'} · ${loc.lat != null ? loc.lat.toFixed(4) : '?'}, ${loc.lng != null ? loc.lng.toFixed(4) : '?'}</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline btn-sm" data-edit-loc="${i}">编辑</button>
+        <button class="btn btn-danger btn-sm" data-delete-loc="${i}">删除</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Edit
+  container.querySelectorAll('[data-edit-loc]').forEach(btn => {
+    btn.addEventListener('click', () => openLocationEditor(parseInt(btn.dataset.editLoc)));
+  });
+
+  // Delete
+  container.querySelectorAll('[data-delete-loc]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.deleteLoc);
+      if (confirm(`确定删除地点"${appData.locations[idx].name}"？`)) {
+        appData.locations.splice(idx, 1);
+        saveData(appData);
+        renderLocationList();
+        renderTripBuilder();
+        showToast('地点已删除');
+      }
+    });
+  });
+}
+
+function openLocationEditor(index) {
+  editingLocationIndex = index;
+  const modal = document.getElementById('locationEditModal');
+  const isEdit = index >= 0;
+
+  document.getElementById('locEditTitle').textContent = isEdit ? '编辑地点' : '添加地点';
+  document.getElementById('locEditIndex').value = index;
+
+  if (isEdit) {
+    const loc = appData.locations[index];
+    document.getElementById('locEditName').value = loc.name;
+    document.getElementById('locEditAddress').value = loc.address || '';
+    document.getElementById('locEditLat').value = loc.lat != null ? loc.lat : '';
+    document.getElementById('locEditLng').value = loc.lng != null ? loc.lng : '';
+  } else {
+    document.getElementById('locEditName').value = '';
+    document.getElementById('locEditAddress').value = '';
+    document.getElementById('locEditLat').value = '';
+    document.getElementById('locEditLng').value = '';
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeLocationEditor() {
+  document.getElementById('locationEditModal').classList.add('hidden');
+  editingLocationIndex = -1;
+}
+
+function saveLocationEdit() {
+  const name = document.getElementById('locEditName').value.trim();
+  const address = document.getElementById('locEditAddress').value.trim();
+  const lat = parseFloat(document.getElementById('locEditLat').value);
+  const lng = parseFloat(document.getElementById('locEditLng').value);
+
+  if (!name) {
+    showToast('请输入地点名称', 'error');
+    return;
+  }
+
+  const locData = {
+    name,
+    address: address || '',
+    lat: isNaN(lat) ? null : lat,
+    lng: isNaN(lng) ? null : lng,
+  };
+
+  const index = parseInt(document.getElementById('locEditIndex').value);
+  if (index >= 0 && index < appData.locations.length) {
+    appData.locations[index] = locData;
+  } else {
+    appData.locations.push(locData);
+  }
+
+  saveData(appData);
+  closeLocationEditor();
+  renderLocationList();
+  renderTripBuilder();
+  showToast('地点已保存');
+}
+
+// ==================== EVENT HANDLERS ====================
+function init() {
+  // Header date
+  document.getElementById('headerDate').textContent = formatDate(today());
+
+  // Check daily reset - move yesterday's data if needed
+  checkDailyReset();
+
+  // Initial render
+  renderTripBuilder();
+  renderTodaySaved();
+  renderHistory();
+  renderSettings();
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`tab-${target}`).classList.add('active');
+    });
+  });
+
+  // Start input click
+  document.getElementById('startInput').addEventListener('click', () => openLocationPicker('start'));
+
+  // Start clear
+  document.getElementById('startClear').addEventListener('click', (e) => {
+    e.stopPropagation();
+    currentTrip.startIndex = -1;
+    document.getElementById('startInput').value = '';
+    document.getElementById('startAddress').textContent = '';
+    document.getElementById('startWrapper').classList.remove('has-value');
+    updateDistances();
+  });
+
+  // Add destination
+  document.getElementById('addDestBtn').addEventListener('click', () => {
+    currentTrip.destIndices.push(-1);
+    renderTripBuilder();
+  });
+
+  // Save trip
+  document.getElementById('saveBtn').addEventListener('click', saveCurrentTrip);
+
+  // Modal close
+  document.getElementById('modalClose').addEventListener('click', closeLocationPicker);
+  document.getElementById('locationModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('locationModal')) closeLocationPicker();
+  });
+
+  // Modal search
+  document.getElementById('modalSearch').addEventListener('input', (e) => {
+    renderModalList(e.target.value);
+  });
+
+  // Location edit modal
+  document.getElementById('locEditClose').addEventListener('click', closeLocationEditor);
+  document.getElementById('locationEditModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('locationEditModal')) closeLocationEditor();
+  });
+  document.getElementById('locEditSave').addEventListener('click', saveLocationEdit);
+  document.getElementById('addLocationBtn').addEventListener('click', () => openLocationEditor(-1));
+
+  // Reset locations
+  document.getElementById('resetLocationsBtn').addEventListener('click', () => {
+    if (confirm('确定恢复默认地点列表？当前自定义地点将丢失。')) {
+      appData.locations = JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+      saveData(appData);
+      renderLocationList();
+      renderTripBuilder();
+      showToast('已恢复默认地点');
+    }
+  });
+
+  // Amap key
+  document.getElementById('saveAmapKeyBtn').addEventListener('click', () => {
+    const key = document.getElementById('amapKeyInput').value.trim();
+    appData.settings.amapKey = key;
+    saveData(appData);
+    updateAmapStatus();
+    updateDistances();
+    showToast('API Key 已保存');
+  });
+
+  document.getElementById('testAmapKeyBtn').addEventListener('click', async () => {
+    const key = document.getElementById('amapKeyInput').value.trim();
+    if (!key) {
+      showToast('请先输入 API Key', 'error');
+      return;
+    }
+    // Test with a known coordinate
+    try {
+      const url = `https://restapi.amap.com/v3/geocode/regeo?key=${key}&location=104.0668,30.5728`;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      if (json.status === '1') {
+        showToast('✅ 高德API连接成功！', 'success');
+        appData.settings.amapKey = key;
+        saveData(appData);
+        updateAmapStatus();
+      } else {
+        showToast('❌ API Key 无效或服务异常', 'error');
+      }
+    } catch (e) {
+      showToast('❌ 网络连接失败', 'error');
+    }
+  });
+
+  // Clear today
+  document.getElementById('clearTodayBtn').addEventListener('click', () => {
+    if (confirm('确定清空今日所有行程记录？')) {
+      const dateKey = today();
+      delete appData.history[dateKey];
+      saveData(appData);
+      renderTodaySaved();
+      renderHistory();
+      showToast('今日记录已清空');
+    }
+  });
+
+  // Clear all history
+  document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+    if (confirm('确定清空全部历史记录？此操作不可恢复！')) {
+      appData.history = {};
+      saveData(appData);
+      renderHistory();
+      renderTodaySaved();
+      showToast('历史记录已清空');
+    }
+  });
+
+  // Export data
+  document.getElementById('exportDataBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `公车里程数据_${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('数据已导出');
+  });
+
+  // Import data
+  document.getElementById('importDataBtn').addEventListener('click', () => {
+    document.getElementById('importFileInput').click();
+  });
+  document.getElementById('importFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.locations && data.history && data.settings) {
+          if (confirm('导入数据将覆盖当前数据，确定继续？')) {
+            appData = data;
+            saveData(appData);
+            currentTrip = { startIndex: -1, destIndices: [-1] };
+            renderTripBuilder();
+            renderTodaySaved();
+            renderHistory();
+            renderSettings();
+            showToast('数据已导入', 'success');
+          }
+        } else {
+          showToast('数据格式不正确', 'error');
+        }
+      } catch (err) {
+        showToast('文件解析失败', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // Keyboard shortcut for modal search
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!document.getElementById('locationModal').classList.contains('hidden')) {
+        closeLocationPicker();
+      }
+      if (!document.getElementById('locationEditModal').classList.contains('hidden')) {
+        closeLocationEditor();
+      }
+    }
+  });
+}
+
+function checkDailyReset() {
+  // Check if we need to track daily reset for display purposes
+  // Data is already keyed by date, so this is just for the "today" highlight
+  const dateKey = today();
+  if (!appData.history[dateKey]) {
+    appData.history[dateKey] = [];
+    saveData(appData);
+  }
+}
+
+// ==================== STARTUP ====================
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
