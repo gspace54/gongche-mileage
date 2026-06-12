@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
 <title>公务用车里程统计</title>
 <style>
   :root {
@@ -1882,6 +1885,18 @@ function checkDailyReset() {
   }
 }
 
+
+// ==================== CACHE BUST ====================
+const APP_VERSION = "1.2.1";
+(function checkVersion() {
+  const storedVer = localStorage.getItem("app_version");
+  if (storedVer && storedVer !== APP_VERSION) {
+    localStorage.setItem("app_version", APP_VERSION);
+    location.reload(true);
+    return;
+  }
+  localStorage.setItem("app_version", APP_VERSION);
+})();
 // ==================== STARTUP ====================
 document.addEventListener('DOMContentLoaded', init);
 </script>
